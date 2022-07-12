@@ -83,7 +83,7 @@ func TestGoodRequests(t *testing.T) {
 			true,
 		},
 		{
-			[]byte(`{"backconnect_user": "a:b", "all_access": {"a:b": true}}`),
+			[]byte(`{"backconnect_user": "a:b"}`),
 			[]byte("ONNECT example.org:443 HTTP/1.1\r\nHost: example.org:443\r\nProxy-Authorization: Basic YTpi\r\nX-Clientip: 5.5.5.5\r\nX-Packageid: 5\r\nX-Userid: 55\r\n\r\n"),
 			'C',
 			"example.org",
@@ -95,7 +95,7 @@ func TestGoodRequests(t *testing.T) {
 			true,
 		},
 		{
-			[]byte(`{"backconnect_user": "a:b", "all_access": {"a:b": true}}`),
+			[]byte(`{"backconnect_user": "a:b"}`),
 			[]byte("ET http://example.org HTTP/1.1\r\nHost: example.org\r\nProxy-Authorization: Basic YTpi\r\nX-Clientip: 5.5.5.5\r\nX-Packageid: 5\r\nX-Userid: 55\r\n\r\n"),
 			'G',
 			"example.org",

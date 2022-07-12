@@ -3,7 +3,7 @@ module github.com/duratarskeyk/proxymux
 go 1.18
 
 require (
-	github.com/duratarskeyk/go-common-utils v1.9.0
+	github.com/duratarskeyk/go-common-utils v1.9.1
 	go.uber.org/zap v1.21.0
 )
 

@@ -31,7 +31,7 @@ type goodTestCase struct {
 func TestGoodRequests(t *testing.T) {
 	var testCases = []*goodTestCase{
 		{
-			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_credentials": {}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`),
+			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`),
 			[]byte{2, 0, 2},
 			nil,
 			[]byte{5, 1, 0, 1, 2, 2, 2, 2, 0, 78},
@@ -44,7 +44,7 @@ func TestGoodRequests(t *testing.T) {
 			false,
 		},
 		{
-			[]byte(`{"backconnect_user": "a:b", "all_access": {"a:b": true}, "ips_to_credentials": {}, "ips_to_authorized_ips":{}}`),
+			[]byte(`{"backconnect_user": "a:b"}`),
 			[]byte{2, 0, 2},
 			[]byte{1, 1, 'a', 1, 'b'},
 			[]byte{5, 1, 0, 1, 2, 2, 2, 2, 0, 78, 0, 0, 0, 2, 0, 0, 0, 22, 5, 5, 5, 5},
@@ -123,7 +123,7 @@ func TestBadRequests(t *testing.T) {
 	// command error
 	// backconnect error
 	var cfg proxyconfig.Config
-	json.Unmarshal([]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_credentials": {}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`), &cfg)
+	json.Unmarshal([]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`), &cfg)
 	c1, c2 := net.Pipe()
 	req := GetSocks5Request()
 	fields := req.Fields
@@ -174,7 +174,7 @@ func TestBadRequests(t *testing.T) {
 	c2.Close()
 
 	cfg = proxyconfig.Config{}
-	json.Unmarshal([]byte(`{"backconnect_user": "a:b", "all_access": {"a:b": true}}`), &cfg)
+	json.Unmarshal([]byte(`{"backconnect_user": "a:b"}`), &cfg)
 	c1, c2 = net.Pipe()
 	req = GetSocks5Request()
 	fields = req.Fields

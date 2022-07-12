@@ -36,7 +36,7 @@ func TestGoodRequests(t *testing.T) {
 	var testCases = []*goodTestCase{
 		{
 			[]byte{1, 0, 22, 212, 15, 134, 65, 0},
-			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_credentials": {}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`),
+			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`),
 			"212.15.134.65",
 			"22",
 			1,
@@ -46,7 +46,7 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 80, 75, 15, 13, 65, 't', 'e', 's', 't', '.', 't', 'e', 's', 't', 0},
-			[]byte(`{"package_ids_to_user_ids": {"2": 22}, "ips_to_credentials": {"1.2.3.4": {"test:test": 2}}, "ips_to_authorized_ips":{}}`),
+			[]byte(`{"package_ids_to_user_ids": {"2": 22}, "ips_to_credentials": {"1.2.3.4": {"test:test": 2}}}`),
 			"75.15.13.65",
 			"80",
 			2,
@@ -56,7 +56,7 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 21, 56, 0, 0, 0, 13, 0, 'y', 'a', '.', 'r', 'u', 0},
-			[]byte(`{"package_ids_to_user_ids": {"3": 33}, "ips_to_credentials": {}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 3}}}`),
+			[]byte(`{"package_ids_to_user_ids": {"3": 33}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 3}}}`),
 			"ya.ru",
 			"5432",
 			3,
@@ -66,7 +66,7 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 80, 0, 0, 0, 65, 't', 'e', 's', 't', '.', 't', 'e', 's', 't', 0, 'y', 'y', '.', 'r', 'u', 0},
-			[]byte(`{"package_ids_to_user_ids": {"4": 44}, "ips_to_credentials": {"1.2.3.4": {"test:test": 4}}, "ips_to_authorized_ips":{}}`),
+			[]byte(`{"package_ids_to_user_ids": {"4": 44}, "ips_to_credentials": {"1.2.3.4": {"test:test": 4}}}`),
 			"yy.ru",
 			"80",
 			4,
@@ -76,7 +76,7 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 99, 0, 0, 0, 33, 'a', '.', 'b', 0, 'e', 'x', '.', 'r', 'u', 0, 0, 0, 0, 5, 0, 0, 0, 55, 5, 5, 5, 5},
-			[]byte(`{"backconnect_user": "a:b", "all_access": {"a:b": true}, "ips_to_credentials": {}, "ips_to_authorized_ips":{}}`),
+			[]byte(`{"backconnect_user": "a:b"}`),
 			"ex.ru",
 			"99",
 			5,
@@ -86,7 +86,7 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 99, 0, 0, 0, 33, 'a', '.', 'b', 0, 'e', 'x', '.', 'r', 'u', 0},
-			[]byte(`{"all_access": {"a:b": true}, "ips_to_credentials": {}, "ips_to_authorized_ips":{}}`),
+			[]byte(`{"all_access": {"a:b": true}}`),
 			"ex.ru",
 			"99",
 			0,
@@ -166,7 +166,6 @@ func TestBadRequests(t *testing.T) {
 		io.ErrUnexpectedEOF,
 	}
 	cfg := proxyconfig.Config{}
-	json.Unmarshal([]byte(`{"package_ids_to_user_ids": {}, "ips_to_credentials": {}, "ips_to_authorized_ips":{}})`), &cfg)
 	errChan := make(chan error)
 	for nr, request := range badRequests {
 		c1, c2 := net.Pipe()
