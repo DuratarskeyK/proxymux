@@ -75,7 +75,7 @@ func (req *HTTPRequest) Read() error {
 		fields.PortNum = uint16(portNum)
 	} else {
 		if req.Tunnel {
-			fields.Host, fields.Port, fields.PortNum = hostname, "443", 443
+			fields.Host, fields.Port, fields.PortNum = hostname, "80", 80
 		} else {
 			switch req.Request.URL.Scheme {
 			case "http":
