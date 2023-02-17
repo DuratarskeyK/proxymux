@@ -55,11 +55,11 @@ var HTTP573CommunicationError = "HTTP/1.1 573 Target Host Communication Error\r\
 	"X-Request-Error: TARGET_HOST_COMMUNICATION_FAILED\r\n" +
 	"Connection: close\r\n%s"
 
-var HTTP529ProxyRatelimitReached = "HTTP/1.1 529 Proxy Ratelimit Reached\r\n" +
+var HTTP529ProxyRatelimitReached = "HTTP/1.1 529 Proxy Limit Reached\r\n" +
 	"Server: FaaS v1.3-20220203-7fa38bd5af\r\n" +
 	"Date: %s\r\n" +
 	"%s" +
-	"X-Request-Error: PROXY_RATELIMIT_REACHED\r\n" +
+	"X-Request-Error: PROXY_LIMIT_REACHED\r\n" +
 	"Connection: close\r\n%s"
 
 const contentTypeHeader = "Content-Type: text/plain; charset=utf-8\r\n"
