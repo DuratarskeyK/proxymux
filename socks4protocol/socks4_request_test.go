@@ -2,7 +2,6 @@ package socks4protocol
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -11,13 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duratarskeyk/go-common-utils/proxyconfig"
+	"github.com/duratarskeyk/go-common-utils/authorizer"
 	"github.com/duratarskeyk/proxymux/corestructs"
+	"github.com/duratarskeyk/proxymux/internal/authmock"
 )
 
 type goodTestCase struct {
 	request     []byte
-	proxyConfig []byte
+	authMock    *authmock.Mock
 	host        string
 	port        string
 	packageID   int
@@ -36,7 +36,14 @@ func TestGoodRequests(t *testing.T) {
 	var testCases = []*goodTestCase{
 		{
 			[]byte{1, 0, 22, 212, 15, 134, 65, 0},
-			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 1}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 1,
+					UserID:    11,
+				},
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			"212.15.134.65",
 			"22",
 			1,
@@ -46,7 +53,14 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 80, 75, 15, 13, 65, 't', 'e', 's', 't', '.', 't', 'e', 's', 't', 0},
-			[]byte(`{"package_ids_to_user_ids": {"2": 22}, "ips_to_credentials": {"1.2.3.4": {"test:test": 2}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 2,
+					UserID:    22,
+				},
+			},
 			"75.15.13.65",
 			"80",
 			2,
@@ -56,7 +70,14 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 21, 56, 0, 0, 0, 13, 0, 'y', 'a', '.', 'r', 'u', 0},
-			[]byte(`{"package_ids_to_user_ids": {"3": 33}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 3}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 3,
+					UserID:    33,
+				},
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			"ya.ru",
 			"5432",
 			3,
@@ -66,7 +87,14 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 80, 0, 0, 0, 65, 't', 'e', 's', 't', '.', 't', 'e', 's', 't', 0, 'y', 'y', '.', 'r', 'u', 0},
-			[]byte(`{"package_ids_to_user_ids": {"4": 44}, "ips_to_credentials": {"1.2.3.4": {"test:test": 4}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 4,
+					UserID:    44,
+				},
+			},
 			"yy.ru",
 			"80",
 			4,
@@ -76,7 +104,15 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 99, 0, 0, 0, 33, 'a', '.', 'b', 0, 'e', 'x', '.', 'r', 'u', 0, 0, 0, 0, 5, 0, 0, 0, 55, 5, 5, 5, 5},
-			[]byte(`{"backconnect_user": "a:b"}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:          true,
+					PackageID:   5,
+					UserID:      55,
+					Backconnect: true,
+				},
+			},
 			"ex.ru",
 			"99",
 			5,
@@ -86,7 +122,13 @@ func TestGoodRequests(t *testing.T) {
 		},
 		{
 			[]byte{1, 0, 99, 0, 0, 0, 33, 'a', '.', 'b', 0, 'e', 'x', '.', 'r', 'u', 0},
-			[]byte(`{"all_access": {"a:b": true}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:         true,
+					SystemUser: true,
+				},
+			},
 			"ex.ru",
 			"99",
 			0,
@@ -97,8 +139,6 @@ func TestGoodRequests(t *testing.T) {
 	}
 	for nr, testCase := range testCases {
 		c1, c2 := net.Pipe()
-		cfg := proxyconfig.Config{}
-		json.Unmarshal(testCase.proxyConfig, &cfg)
 		req := GetSocks4Request()
 		fields := req.Fields
 		fields.UserIP = "4.3.2.1"
@@ -106,7 +146,7 @@ func TestGoodRequests(t *testing.T) {
 		fields.PackageID = 0
 		fields.UserID = 0
 		fields.Conn = c1
-		fields.ProxyConfig = &cfg
+		fields.ProxyConfig = testCase.authMock
 		fields.Timeouts = &corestructs.Timeouts{Handshake: 30 * time.Second}
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -165,7 +205,6 @@ func TestBadRequests(t *testing.T) {
 		ErrIPAuthFailed,
 		io.ErrUnexpectedEOF,
 	}
-	cfg := proxyconfig.Config{}
 	errChan := make(chan error)
 	for nr, request := range badRequests {
 		c1, c2 := net.Pipe()
@@ -174,7 +213,10 @@ func TestBadRequests(t *testing.T) {
 		fields.UserIP = "pipe"
 		fields.ProxyIP = "pipe"
 		fields.Conn = c1
-		fields.ProxyConfig = &cfg
+		fields.ProxyConfig = &authmock.Mock{
+			IPAuthRet:          authorizer.BadAuthResult,
+			CredentialsAuthRet: authorizer.BadAuthResult,
+		}
 		fields.Timeouts = &corestructs.Timeouts{Handshake: 1 * time.Second}
 		go func(conn net.Conn, data []byte) {
 			conn.Write(request)

@@ -2,14 +2,14 @@ package socks5protocol
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/duratarskeyk/go-common-utils/proxyconfig"
+	"github.com/duratarskeyk/go-common-utils/authorizer"
 	"github.com/duratarskeyk/proxymux/corestructs"
+	"github.com/duratarskeyk/proxymux/internal/authmock"
 )
 
 func TestAuthorize(t *testing.T) {
@@ -25,8 +25,13 @@ func TestAuthorize(t *testing.T) {
 		c2.Read(ret)
 		retChan <- ret
 	}()
-	proxyConfig := &proxyconfig.Config{}
-	json.Unmarshal([]byte("{\"ips_to_credentials\": {}, \"ips_to_authorized_ips\":{\"pipe\": {\"pipe\": 1}}}"), proxyConfig)
+	proxyConfig := &authmock.Mock{
+		IPAuthRet: authorizer.AuthResult{
+			OK:        true,
+			PackageID: 1,
+		},
+		CredentialsAuthRet: authorizer.BadAuthResult,
+	}
 	req := &Socks5Request{
 		Fields: &corestructs.Fields{
 			Conn:        c1,
@@ -63,8 +68,13 @@ func TestAuthorize(t *testing.T) {
 		retChan <- ret
 	}()
 	go func() {
-		proxyConfig := &proxyconfig.Config{}
-		json.Unmarshal([]byte("{\"ips_to_credentials\": {\"pipe\": {\"abc:defg\": 1}}, \"ips_to_authorized_ips\": {}}"), proxyConfig)
+		proxyConfig := &authmock.Mock{
+			IPAuthRet: authorizer.BadAuthResult,
+			CredentialsAuthRet: authorizer.AuthResult{
+				OK:        true,
+				PackageID: 1,
+			},
+		}
 		req := &Socks5Request{
 			Fields: &corestructs.Fields{
 				Conn:        c1,
@@ -113,10 +123,13 @@ func TestAuthorize(t *testing.T) {
 	go func() {
 		req := &Socks5Request{
 			Fields: &corestructs.Fields{
-				Conn:        c1,
-				ProxyConfig: &proxyconfig.Config{},
-				UserIP:      "pipe",
-				ProxyIP:     "pipe",
+				Conn: c1,
+				ProxyConfig: &authmock.Mock{
+					IPAuthRet:          authorizer.BadAuthResult,
+					CredentialsAuthRet: authorizer.BadAuthResult,
+				},
+				UserIP:  "pipe",
+				ProxyIP: "pipe",
 			},
 			handshakeConn: readWriter{conn: c1, timeout: 30 * time.Second},
 		}
@@ -153,10 +166,13 @@ func TestAuthorize(t *testing.T) {
 	}()
 	req = &Socks5Request{
 		Fields: &corestructs.Fields{
-			Conn:        c1,
-			ProxyConfig: &proxyconfig.Config{},
-			UserIP:      "pipe",
-			ProxyIP:     "pipe",
+			Conn: c1,
+			ProxyConfig: &authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
+			UserIP:  "pipe",
+			ProxyIP: "pipe",
 		},
 		handshakeConn: readWriter{conn: c1, timeout: 30 * time.Second},
 	}
@@ -187,8 +203,13 @@ func TestAuthorize(t *testing.T) {
 		retChan <- ret
 	}()
 	go func() {
-		proxyConfig := &proxyconfig.Config{}
-		json.Unmarshal([]byte("{\"ips_to_credentials\": {}, \"ips_to_authorized_ips\":{\"pipe\": {\"pipe\": 1}}}"), proxyConfig)
+		proxyConfig := &authmock.Mock{
+			IPAuthRet: authorizer.AuthResult{
+				OK:        true,
+				PackageID: 1,
+			},
+			CredentialsAuthRet: authorizer.BadAuthResult,
+		}
 		req := &Socks5Request{
 			Fields: &corestructs.Fields{
 				Conn:        c1,

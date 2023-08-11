@@ -2,19 +2,19 @@ package httpprotocol
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/duratarskeyk/go-common-utils/proxyconfig"
+	"github.com/duratarskeyk/go-common-utils/authorizer"
 	"github.com/duratarskeyk/proxymux/corestructs"
+	"github.com/duratarskeyk/proxymux/internal/authmock"
 )
 
 type goodTestCase struct {
-	proxyConfig []byte
+	authMock    *authmock.Mock
 	httpRequest []byte
 	firstByte   byte
 
@@ -35,7 +35,14 @@ func TestGoodRequests(t *testing.T) {
 	// test backconnect CONNECT
 	testCases := []*goodTestCase{
 		{
-			[]byte(`{"package_ids_to_user_ids": {"1": 11}, "ips_to_credentials": {"1.2.3.4": {"a:b": 1}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 1,
+					UserID:    11,
+				},
+			},
 			[]byte("ET http://www.example.org HTTP/1.1\r\nHost: www.example.org\r\nProxy-Authorization: Basic YTpi\r\nX-Header: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\n\r\n"),
 			'G',
 			"www.example.org",
@@ -47,7 +54,14 @@ func TestGoodRequests(t *testing.T) {
 			false,
 		},
 		{
-			[]byte(`{"package_ids_to_user_ids": {"2": 22}, "ips_to_authorized_ips":{"1.2.3.4": {"4.3.2.1": 2}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 2,
+					UserID:    22,
+				},
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://www.google.com/search?q=123 HTTP/1.1\r\nHost: www.google.com\r\n\r\n"),
 			'G',
 			"www.google.com",
@@ -59,7 +73,14 @@ func TestGoodRequests(t *testing.T) {
 			false,
 		},
 		{
-			[]byte(`{"package_ids_to_user_ids": {"3": 33}, "ips_to_credentials": {"1.2.3.4": {"a:b": 3}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 3,
+					UserID:    33,
+				},
+			},
 			[]byte("ET https://www.google.com/search?q=123 HTTP/1.1\r\nHost: www.google.com\r\nProxy-Authorization: Basic YTpi\r\nProxy-Test: test\r\n\r\n"),
 			'G',
 			"www.google.com",
@@ -71,7 +92,14 @@ func TestGoodRequests(t *testing.T) {
 			false,
 		},
 		{
-			[]byte(`{"package_ids_to_user_ids": {"4": 44}, "ips_to_credentials": {"1.2.3.4": {"a:b": 4}}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:        true,
+					PackageID: 4,
+					UserID:    44,
+				},
+			},
 			[]byte("ONNECT example.org:7777 HTTP/1.1\r\nHost: example.org:7777\r\nProxy-Authorization: Basic YTpi\r\n\r\n"),
 			'C',
 			"example.org",
@@ -83,7 +111,15 @@ func TestGoodRequests(t *testing.T) {
 			true,
 		},
 		{
-			[]byte(`{"backconnect_user": "a:b"}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:          true,
+					PackageID:   5,
+					UserID:      55,
+					Backconnect: true,
+				},
+			},
 			[]byte("ONNECT example.org:443 HTTP/1.1\r\nHost: example.org:443\r\nProxy-Authorization: Basic YTpi\r\nX-Clientip: 5.5.5.5\r\nX-Packageid: 5\r\nX-Userid: 55\r\n\r\n"),
 			'C',
 			"example.org",
@@ -95,7 +131,15 @@ func TestGoodRequests(t *testing.T) {
 			true,
 		},
 		{
-			[]byte(`{"backconnect_user": "a:b"}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:          true,
+					PackageID:   5,
+					UserID:      55,
+					Backconnect: true,
+				},
+			},
 			[]byte("ET http://example.org HTTP/1.1\r\nHost: example.org\r\nProxy-Authorization: Basic YTpi\r\nX-Clientip: 5.5.5.5\r\nX-Packageid: 5\r\nX-Userid: 55\r\n\r\n"),
 			'G',
 			"example.org",
@@ -107,7 +151,13 @@ func TestGoodRequests(t *testing.T) {
 			false,
 		},
 		{
-			[]byte(`{"all_access": {"a:b": true}}`),
+			&authmock.Mock{
+				IPAuthRet: authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.AuthResult{
+					OK:         true,
+					SystemUser: true,
+				},
+			},
 			[]byte("ONNECT example.org:443 HTTP/1.1\r\nHost: example.org:443\r\nProxy-Authorization: Basic YTpi\r\nX-Clientip: 5.5.5.5\r\nX-Packageid: 5\r\nX-Userid: 55\r\n\r\n"),
 			'C',
 			"example.org",
@@ -122,8 +172,6 @@ func TestGoodRequests(t *testing.T) {
 	doneCh := make(chan struct{})
 	for nr, testCase := range testCases {
 		c1, c2 := net.Pipe()
-		var cfg proxyconfig.Config
-		json.Unmarshal(testCase.proxyConfig, &cfg)
 		req := GetHTTPRequest()
 		req.FirstByte = testCase.firstByte
 		fields := req.Fields
@@ -132,7 +180,7 @@ func TestGoodRequests(t *testing.T) {
 		fields.PackageID = 0
 		fields.UserID = 0
 		fields.Conn = c1
-		fields.ProxyConfig = &cfg
+		fields.ProxyConfig = testCase.authMock
 		fields.Timeouts = &corestructs.Timeouts{Handshake: 30 * time.Second}
 		go func() {
 			req.Read()
@@ -183,7 +231,7 @@ func TestGoodRequests(t *testing.T) {
 }
 
 type badTestCase struct {
-	proxyConfig []byte
+	authMock    *authmock.Mock
 	httpRequest []byte
 	firstByte   byte
 
@@ -193,43 +241,64 @@ type badTestCase struct {
 func TestBadRequests(t *testing.T) {
 	testCases := []*badTestCase{
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("\x00\x11 \xff\xff \x12\x13\r\n\r\n"),
 			'a',
 			ErrRequestReadFailed,
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET / HTTP/1.1\r\nHost: example.org\r\n\r\n"),
 			'G',
 			ErrNotAuthorativeRequest,
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://example.org:77777 HTTP/1.1\r\nHost: example.org:77777\r\n\r\n"),
 			'G',
 			ErrBadPort,
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://example.org:77 HTTP/1.1\r\nHost: example.org:77\r\nProxy-Authorization: Bearer abcd\r\n\r\n"),
 			'G',
 			ErrNotBasicAuth,
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://example.org:77 HTTP/1.1\r\nHost: example.org:77\r\nProxy-Authorization: Basic aaaaa\r\n\r\n"),
 			'G',
 			base64.CorruptInputError(4),
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://example.org:77 HTTP/1.1\r\nHost: example.org:77\r\nProxy-Authorization: Basic YWFh\r\n\r\n"),
 			'G',
 			ErrBadCredentials,
 		},
 		{
-			[]byte(`{}`),
+			&authmock.Mock{
+				IPAuthRet:          authorizer.BadAuthResult,
+				CredentialsAuthRet: authorizer.BadAuthResult,
+			},
 			[]byte("ET http://example.org:77 HTTP/1.1\r\nHost: example.org:77\r\n\r\n"),
 			'G',
 			ErrIPAuthFailed,
@@ -238,8 +307,6 @@ func TestBadRequests(t *testing.T) {
 	errCh := make(chan error)
 	for nr, testCase := range testCases {
 		c1, c2 := net.Pipe()
-		var cfg proxyconfig.Config
-		json.Unmarshal(testCase.proxyConfig, &cfg)
 		req := GetHTTPRequest()
 		req.FirstByte = testCase.firstByte
 		fields := req.Fields
@@ -248,7 +315,7 @@ func TestBadRequests(t *testing.T) {
 		fields.PackageID = 0
 		fields.UserID = 0
 		fields.Conn = c1
-		fields.ProxyConfig = &cfg
+		fields.ProxyConfig = testCase.authMock
 		fields.Timeouts = &corestructs.Timeouts{Handshake: 30 * time.Second}
 		go func() {
 			errCh <- req.Read()
