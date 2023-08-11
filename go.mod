@@ -1,13 +1,10 @@
 module github.com/duratarskeyk/proxymux
 
-go 1.18
+go 1.20
 
 require (
-	github.com/duratarskeyk/go-common-utils v1.9.1
-	go.uber.org/zap v1.21.0
+	github.com/duratarskeyk/go-common-utils v1.10.1
+	go.uber.org/zap v1.25.0
 )
 
-require (
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
-)
+require go.uber.org/multierr v1.11.0 // indirect
